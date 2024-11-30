@@ -1,0 +1,16 @@
+{
+  "name": "skillforge",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/bun": "latest",
+    "tailwindcss": "^3.4.15"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "trustedDependencies": [
+    "@biomejs/biome"
+  ]
+}
