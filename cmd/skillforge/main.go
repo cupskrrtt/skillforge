@@ -1,46 +1,56 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
 )
 
-type Todo struct {
-	Title string
-	Done  bool
-}
-
-type TodoPageData struct {
-	PageTitle string
-	Todos     []Todo
+type UserLogin struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 func main() {
 	r := mux.NewRouter()
 
-	r.HandleFunc("/books/{title}/page/{page}", func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		title := vars["title"]
-		page := vars["page"]
-
-		fmt.Fprintf(w, "You've requested the book: %s on page %s\n", title, page)
-	})
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		tmpl := template.Must(template.ParseFiles("views/layout.html"))
-		data := TodoPageData{
-			PageTitle: "My TODO list",
-			Todos: []Todo{
-				{Title: "Task 1", Done: false},
-				{Title: "Task 2", Done: true},
-				{Title: "Task 3", Done: true},
-			},
+		tmpl, err := template.ParseFiles("views/index.html")
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			log.Printf("Error parsing template: %v", err)
+			return
 		}
-		tmpl.Execute(w, data)
-	})
 
-	http.ListenAndServe(":3000", r)
+		err = tmpl.Execute(w, nil)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			log.Printf("Error executing template: %v", err)
+		}
+	}).Methods("GET")
+
+	r.HandleFunc("api/auth/login", func(w http.ResponseWriter, r *http.Request) {
+		var user UserLogin
+		err := json.NewDecoder(r.Body).Decode(&user)
+
+		if err != nil {
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			log.Printf("Error decoding JSON: %v", err)
+			return
+		}
+
+		fmt.Fprintf(w, "email: %s, password: %s", user.Email, user.Password)
+	}).Methods("POST")
+
+	log.Println("Starting server on :3000")
+	err := http.ListenAndServe(":3000", r)
+	if err != nil {
+		log.Fatalf("Server failed to start: %v", err)
+	}
 }
